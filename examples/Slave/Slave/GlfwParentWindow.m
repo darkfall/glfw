@@ -107,12 +107,12 @@ static void ErrorCallback(int i, const char* error) {
     glClear(GL_COLOR_BUFFER_BIT);
     
     glBegin(GL_TRIANGLES);
-    glVertex3f(0, 0.5, 0);
-    glColor3f(1, 0, 0);
-    glVertex3f(-0.5, -0.5, 0);
-    glColor3f(0, 1, 0);
-    glVertex3f(0.5, -0.5, 0);
-    glColor3f(0, 0, 1);
+        glVertex3f(0, 0.5, 0);
+        glColor3f(1, 0, 0);
+        glVertex3f(-0.5, -0.5, 0);
+        glColor3f(0, 1, 0);
+        glVertex3f(0.5, -0.5, 0);
+        glColor3f(0, 0, 1);
     glEnd();
     
     glfwSwapBuffers(_glfwWindow);
