@@ -115,6 +115,7 @@ static void ErrorCallback(int i, const char* error) {
         glColor3f(0, 0, 1);
     glEnd();
     
+    
     glfwSwapBuffers(_glfwWindow);
     
 }
