@@ -169,6 +169,7 @@ struct _GLFWwndconfig
     int           glRobustness;
     _GLFWmonitor* monitor;
     _GLFWwindow*  share;
+    void*         parentWindow;
 };
 
 

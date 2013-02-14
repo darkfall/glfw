@@ -190,6 +190,7 @@ GLFWAPI GLFWwindow* glfwCreateWindow(int width, int height,
     wndconfig.glRobustness  = _glfw.hints.glRobustness;
     wndconfig.monitor       = (_GLFWmonitor*) monitor;
     wndconfig.share         = (_GLFWwindow*) share;
+    wndconfig.parentWindow  = 0;
 
     // Check the OpenGL bits of the window config
     if (!_glfwIsValidContextConfig(&wndconfig))
@@ -266,6 +267,118 @@ GLFWAPI GLFWwindow* glfwCreateWindow(int width, int height,
     if (wndconfig.monitor == NULL && wndconfig.visible)
         glfwShowWindow((GLFWwindow*) window);
 
+    return (GLFWwindow*) window;
+}
+
+GLFWwindow* glfwCreateWindowSlave(void* parent, GLFWwindow* share) {
+    _GLFWfbconfig fbconfig;
+    _GLFWwndconfig wndconfig;
+    _GLFWwindow* window;
+    _GLFWwindow* previous;
+    
+    if (!_glfwInitialized)
+    {
+        _glfwInputError(GLFW_NOT_INITIALIZED, NULL);
+        return NULL;
+    }
+    
+    // Set up desired framebuffer config
+    fbconfig.redBits        = Max(_glfw.hints.redBits, 0);
+    fbconfig.greenBits      = Max(_glfw.hints.greenBits, 0);
+    fbconfig.blueBits       = Max(_glfw.hints.blueBits, 0);
+    fbconfig.alphaBits      = Max(_glfw.hints.alphaBits, 0);
+    fbconfig.depthBits      = Max(_glfw.hints.depthBits, 0);
+    fbconfig.stencilBits    = Max(_glfw.hints.stencilBits, 0);
+    fbconfig.accumRedBits   = Max(_glfw.hints.accumRedBits, 0);
+    fbconfig.accumGreenBits = Max(_glfw.hints.accumGreenBits, 0);
+    fbconfig.accumBlueBits  = Max(_glfw.hints.accumBlueBits, 0);
+    fbconfig.accumAlphaBits = Max(_glfw.hints.accumAlphaBits, 0);
+    fbconfig.auxBuffers     = Max(_glfw.hints.auxBuffers, 0);
+    fbconfig.stereo         = _glfw.hints.stereo ? GL_TRUE : GL_FALSE;
+    fbconfig.samples        = Max(_glfw.hints.samples, 0);
+    fbconfig.sRGB           = _glfw.hints.sRGB ? GL_TRUE : GL_FALSE;
+    
+    // Set up desired window config
+    wndconfig.width         = 0;
+    wndconfig.height        = 0;
+    wndconfig.title         = 0;
+    wndconfig.resizable     = _glfw.hints.resizable ? GL_TRUE : GL_FALSE;
+    wndconfig.visible       = _glfw.hints.visible ? GL_TRUE : GL_FALSE;
+    wndconfig.clientAPI     = _glfw.hints.clientAPI;
+    wndconfig.glMajor       = _glfw.hints.glMajor;
+    wndconfig.glMinor       = _glfw.hints.glMinor;
+    wndconfig.glForward     = _glfw.hints.glForward ? GL_TRUE : GL_FALSE;
+    wndconfig.glDebug       = _glfw.hints.glDebug ? GL_TRUE : GL_FALSE;
+    wndconfig.glProfile     = _glfw.hints.glProfile;
+    wndconfig.glRobustness  = _glfw.hints.glRobustness;
+//    wndconfig.monitor       = (_GLFWmonitor*) monitor;
+    wndconfig.monitor       = 0;
+    wndconfig.share         = (_GLFWwindow*) share;
+    wndconfig.parentWindow  = parent;
+    
+    // Check the OpenGL bits of the window config
+    if (!_glfwIsValidContextConfig(&wndconfig))
+        return GL_FALSE;
+    
+    window = (_GLFWwindow*) calloc(1, sizeof(_GLFWwindow));
+    if (!window)
+    {
+        _glfwInputError(GLFW_OUT_OF_MEMORY, NULL);
+        return NULL;
+    }
+    
+    window->next = _glfw.windowListHead;
+    _glfw.windowListHead = window;
+    
+    window->monitor    = wndconfig.monitor;
+    window->resizable  = false;
+    window->cursorMode = GLFW_CURSOR_NORMAL;
+    
+    // Save the currently current context so it can be restored later
+    previous = (_GLFWwindow*) glfwGetCurrentContext();
+    
+    // Open the actual window and create its context
+    if (!_glfwPlatformCreateWindow(window, &wndconfig, &fbconfig))
+    {
+        glfwDestroyWindow((GLFWwindow*) window);
+        glfwMakeContextCurrent((GLFWwindow*) previous);
+        return GL_FALSE;
+    }
+    
+    glfwMakeContextCurrent((GLFWwindow*) window);
+    
+    // Cache the actual (as opposed to requested) context parameters
+    if (!_glfwRefreshContextParams())
+    {
+        glfwDestroyWindow((GLFWwindow*) window);
+        glfwMakeContextCurrent((GLFWwindow*) previous);
+        return GL_FALSE;
+    }
+    
+    // Verify the context against the requested parameters
+    if (!_glfwIsValidContext(&wndconfig))
+    {
+        glfwDestroyWindow((GLFWwindow*) window);
+        glfwMakeContextCurrent((GLFWwindow*) previous);
+        return GL_FALSE;
+    }
+    
+    // Clearing the front buffer to black to avoid garbage pixels left over
+    // from previous uses of our bit of VRAM
+    glClear(GL_COLOR_BUFFER_BIT);
+    _glfwPlatformSwapBuffers(window);
+    
+    // Restore the previously current context (or NULL)
+    glfwMakeContextCurrent((GLFWwindow*) previous);
+    
+    // The GLFW specification states that fullscreen windows have the cursor
+    // captured by default
+    if (wndconfig.monitor)
+        glfwSetInputMode((GLFWwindow*) window, GLFW_CURSOR_MODE, GLFW_CURSOR_CAPTURED);
+    
+    if (wndconfig.monitor == NULL && wndconfig.visible)
+        glfwShowWindow((GLFWwindow*) window);
+    
     return (GLFWwindow*) window;
 }
 

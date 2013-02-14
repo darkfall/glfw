@@ -1092,6 +1092,19 @@ GLFWAPI void glfwWindowHint(int target, int hint);
  *  @sa glfwDestroyWindow
  */
 GLFWAPI GLFWwindow* glfwCreateWindow(int width, int height, const char* title, GLFWmonitor* monitor, GLFWwindow* share);
+    
+    
+/*!
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ */
+    GLFWAPI GLFWwindow* glfwCreateWindowSlave(void* parent, GLFWwindow* share);
 
 /*! @brief Destroys the specified window and its context.
  *  @param[in] window The window to destroy.

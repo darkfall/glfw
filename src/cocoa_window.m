@@ -658,7 +658,7 @@ static GLboolean createWindow(_GLFWwindow* window,
 {
     unsigned int styleMask = 0;
 
-    if (wndconfig->monitor)
+    if (wndconfig->monitor || wndconfig->parentWindow)
         styleMask = NSBorderlessWindowMask;
     else
     {
@@ -669,26 +669,54 @@ static GLboolean createWindow(_GLFWwindow* window,
             styleMask |= NSResizableWindowMask;
     }
 
-    window->ns.object = [[NSWindow alloc]
-        initWithContentRect:NSMakeRect(0, 0, wndconfig->width, wndconfig->height)
-                  styleMask:styleMask
-                    backing:NSBackingStoreBuffered
-                      defer:NO];
-
-    if (window->ns.object == nil)
-    {
-        _glfwInputError(GLFW_PLATFORM_ERROR, "Cocoa: Failed to create window");
-        return GL_FALSE;
-    }
-
     window->ns.view = [[GLFWContentView alloc] initWithGlfwWindow:window];
-
-    [window->ns.object setTitle:[NSString stringWithUTF8String:wndconfig->title]];
-    [window->ns.object setContentView:window->ns.view];
+    // add as child window
+    if(wndconfig->parentWindow) {
+        id parentView = wndconfig->parentWindow;
+        if([parentView isKindOfClass:[NSView class]]) {
+            NSRect frame = [parentView frame];
+           
+            window->ns.object = [parentView window];
+            if (window->ns.object == nil)
+            {
+                _glfwInputError(GLFW_PLATFORM_ERROR, "Cocoa: Failed to assign parent window");
+                return GL_FALSE;
+            }
+            
+            [window->ns.view setFrameOrigin:frame.origin];
+            [window->ns.view setFrameSize:frame.size];
+            [parentView addSubview:window->ns.view];
+        } else {
+            if (window->ns.object == nil)
+            {
+                _glfwInputError(GLFW_PLATFORM_ERROR, "Cocoa: invalid parent window type");
+                return GL_FALSE;
+            }
+        }
+    } else {
+        window->ns.object = [[NSWindow alloc]
+                             initWithContentRect:NSMakeRect(0, 0, wndconfig->width, wndconfig->height)
+                             styleMask:styleMask
+                             backing:NSBackingStoreBuffered
+                             defer:NO];
+    
+        
+        if (window->ns.object == nil)
+        {
+            _glfwInputError(GLFW_PLATFORM_ERROR, "Cocoa: Failed to create window");
+            return GL_FALSE;
+        }
+    }
+    
     [window->ns.object setDelegate:window->ns.delegate];
     [window->ns.object setAcceptsMouseMovedEvents:YES];
-    [window->ns.object center];
 
+    if(!wndconfig->parentWindow) {
+        [window->ns.object setTitle:[NSString stringWithUTF8String:wndconfig->title]];
+        [window->ns.object setContentView:window->ns.view];
+        [window->ns.object center];
+    }
+    
     if ([window->ns.object respondsToSelector:@selector(setRestorable:)])
         [window->ns.object setRestorable:NO];
 
@@ -746,8 +774,11 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
     if (!_glfwCreateContext(window, wndconfig, fbconfig))
         return GL_FALSE;
 
-    [window->nsgl.context setView:[window->ns.object contentView]];
-
+    if(wndconfig->parentWindow) {
+        [window->nsgl.context setView:(NSView*)wndconfig->parentWindow];
+    } else {
+        [window->nsgl.context setView:[window->ns.object contentView]];
+    }
     if (wndconfig->monitor)
     {
         int bpp = colorBits + fbconfig->alphaBits;
