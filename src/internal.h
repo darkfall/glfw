@@ -249,6 +249,10 @@ struct _GLFWwindow
     _GLFW_PLATFORM_WINDOW_STATE;
     // This is defined in the context API's platform.h
     _GLFW_PLATFORM_CONTEXT_STATE;
+
+    // running in slave mode or not, this affects certain behaviors
+    // for example, prevent peek & remove message in poolEvents
+    GLboolean slaveMode;
 };
 
 

@@ -727,25 +727,34 @@ static int createWindow(_GLFWwindow* window,
                         &fullWidth, &fullHeight);
     }
 
-    wideTitle = _glfwCreateWideStringFromUTF8(wndconfig->title);
-    if (!wideTitle)
-    {
-        _glfwInputError(GLFW_PLATFORM_ERROR,
-                        "Win32: Failed to convert title to wide string");
-        return GL_FALSE;
+    if(wndconfig->title) {
+        wideTitle = _glfwCreateWideStringFromUTF8(wndconfig->title);
+        if (!wideTitle)
+        {
+         _glfwInputError(GLFW_PLATFORM_ERROR,
+                         "Win32: Failed to convert title to wide string");
+         return GL_FALSE;
+        }
+    } else {
+        wideTitle = _glfwCreateWideStringFromUTF8("Default");
     }
 
-    window->win32.handle = CreateWindowEx(window->win32.dwExStyle,
-                                          _GLFW_WNDCLASSNAME,
-                                          wideTitle,
-                                          window->win32.dwStyle,
-                                          positionX, positionY,
-                                          fullWidth, fullHeight,
-                                          NULL, // No parent window
-                                          NULL, // No window menu
-                                          GetModuleHandle(NULL),
-                                          window);  // Pass GLFW window to WM_CREATE
+    if(wndconfig->parentWindow) {
+        window->win32.handle = (HWND)wndconfig->parentWindow;
+        window->slaveMode = 1;
 
+    } else {
+        window->win32.handle = CreateWindowEx(window->win32.dwExStyle,
+                                              _GLFW_WNDCLASSNAME,
+                                              wideTitle,
+                                              window->win32.dwStyle,
+                                              positionX, positionY,
+                                              fullWidth, fullHeight,
+                                              NULL, // No parent window
+                                              NULL, // No window menu
+                                              GetModuleHandle(NULL),
+                                              window);  // Pass GLFW window to WM_CREATE
+    }
     free(wideTitle);
 
     if (!window->win32.handle)
@@ -816,7 +825,7 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
     if (status == _GLFW_RECREATION_IMPOSSIBLE)
         return GL_FALSE;
 
-    if (status == _GLFW_RECREATION_REQUIRED)
+    if (status == _GLFW_RECREATION_REQUIRED && !wndconfig->parentWindow)
     {
         // Some window hints require us to re-create the context using WGL
         // extensions retrieved through the current context, as we cannot check
@@ -992,23 +1001,25 @@ void _glfwPlatformPollEvents(void)
         //window->win32.oldCursorY = window->cursorPosY;
     }
 
-    while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
-    {
-        if (msg.message == WM_QUIT)
+    if(window && !window->slaveMode) {
+        while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
         {
-            // Treat WM_QUIT as a close on all windows
-
-            window = _glfw.windowListHead;
-            while (window)
+            if (msg.message == WM_QUIT)
             {
-                _glfwInputWindowCloseRequest(window);
-                window = window->next;
+                // Treat WM_QUIT as a close on all windows
+
+                window = _glfw.windowListHead;
+                while (window)
+                {
+                    _glfwInputWindowCloseRequest(window);
+                    window = window->next;
+                }    
             }
-        }
-        else
-        {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
+            else
+            {
+                TranslateMessage(&msg);
+                DispatchMessage(&msg);
+            }
         }
     }
 

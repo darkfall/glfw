@@ -331,7 +331,7 @@ GLFWwindow* glfwCreateWindowSlave(void* parent, GLFWwindow* share) {
     _glfw.windowListHead = window;
     
     window->monitor    = wndconfig.monitor;
-    window->resizable  = false;
+    window->resizable  = 0;
     window->cursorMode = GLFW_CURSOR_NORMAL;
     
     // Save the currently current context so it can be restored later
