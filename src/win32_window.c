@@ -295,6 +295,8 @@ static int translateKey(WPARAM wParam, LPARAM lParam)
     return -1;
 }
 
+WNDPROC PrevWindowProc = 0;
+
 // Window callback function (handles window events)
 //
 static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg,
@@ -621,9 +623,12 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg,
             break;
         }
     }
-
-    // Pass all unhandled messages to DefWindowProc
-    return DefWindowProc(hWnd, uMsg, wParam, lParam);
+    if(PrevWindowProc) {
+        return PrevWindowProc(hWnd, uMsg, wParam, lParam);
+    } else {
+       // Pass all unhandled messages to DefWindowProc
+        return DefWindowProc(hWnd, uMsg, wParam, lParam);
+    }
 }
 
 // Translate client window size to full window size (including window borders)
@@ -743,7 +748,12 @@ static int createWindow(_GLFWwindow* window,
         window->win32.handle = (HWND)wndconfig->parentWindow;
         window->slaveMode = 1;
 
+        PrevWindowProc = (WNDPROC)GetWindowLong(window->win32.handle, GWL_WNDPROC);
+        SetWindowLong(window->win32.handle, GWL_WNDPROC, (LONG)windowProc);
+
     } else {
+        PrevWindowProc = 0;
+
         window->win32.handle = CreateWindowEx(window->win32.dwExStyle,
                                               _GLFW_WNDCLASSNAME,
                                               wideTitle,
